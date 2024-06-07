@@ -1,3 +1,10 @@
+This repo consists different extensions to faasd which test features such as 
+
+- Supporting scale to more than 1 replicas with load balancing using IPVS at [`ipvs`](https://github.com/alanpjohn/faasd-extended/tree/ipvs)
+- Supporting firecracker-containerd at [`firecracker-support`](https://github.com/alanpjohn/faasd-extended/tree/firecracker-support)
+
+---
+
 # faasd - a lightweight & portable faas engine
 
 [![Sponsor faasd](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&link=https://github.com/sponsors/openfaas)](https://github.com/sponsors/openfaas)
