@@ -81,7 +81,10 @@ func runProviderE(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	client, err := containerd.New(providerConfig.Sock)
+	client, err := containerd.New(
+		providerConfig.Sock,
+		containerd.WithDefaultRuntime("aws.firecracker"),
+	)
 	if err != nil {
 		return err
 	}

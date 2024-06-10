@@ -30,7 +30,7 @@ func ReadFromEnv(hasEnv types.HasEnv) (*types.FaaSConfig, *ProviderConfig, error
 	config.TCPPort = &port
 
 	providerConfig := &ProviderConfig{
-		Sock: types.ParseString(hasEnv.Getenv("sock"), "/run/containerd/containerd.sock"),
+		Sock: types.ParseString(hasEnv.Getenv("sock"), "/run/firecracker-containerd/containerd.sock"),
 	}
 
 	return config, providerConfig, nil

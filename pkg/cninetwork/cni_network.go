@@ -23,7 +23,7 @@ const (
 	CNIBinDir = "/opt/cni/bin"
 
 	// CNIConfDir describes the directory where the CNI plugin's configuration is stored
-	CNIConfDir = "/etc/cni/net.d"
+	CNIConfDir = "/etc/cni/conf.d"
 
 	// NetNSPathFmt gives the path to the a process network namespace, given the pid
 	NetNSPathFmt = "/proc/%d/ns/net"
@@ -32,32 +32,26 @@ const (
 	CNIDataDir = "/var/run/cni"
 
 	// defaultCNIConfFilename is the vanity filename of default CNI configuration file
-	defaultCNIConfFilename = "10-openfaas.conflist"
+	defaultCNIConfFilename = "fcnet.conflist"
 
-	// defaultNetworkName names the "docker-bridge"-like CNI plugin-chain installed when no other CNI configuration is present.
 	// This value appears in iptables comments created by CNI.
-	defaultNetworkName = "openfaas-cni-bridge"
-
-	// defaultBridgeName is the default bridge device name used in the defaultCNIConf
-	defaultBridgeName = "openfaas0"
+	defaultNetworkName = "fcnet"
 
 	// defaultSubnet is the default subnet used in the defaultCNIConf -- this value is set to not collide with common container networking subnets:
-	defaultSubnet = "10.62.0.0/16"
+	defaultSubnet = "10.64.0.0/16"
 
 	// defaultIfPrefix is the interface name to be created in the container
-	defaultIfPrefix = "eth"
+	defaultIfPrefix = "veth"
 )
 
-// defaultCNIConf is a CNI configuration that enables network access to containers (docker-bridge style)
+// defaultCNIConf is a CNI configuration that enables network access to containers
 var defaultCNIConf = fmt.Sprintf(`
 {
     "cniVersion": "0.4.0",
     "name": "%s",
     "plugins": [
       {
-        "type": "bridge",
-        "bridge": "%s",
-        "isGateway": true,
+        "type": "ptp",
         "ipMasq": true,
         "ipam": {
             "type": "host-local",
@@ -70,10 +64,13 @@ var defaultCNIConf = fmt.Sprintf(`
       },
       {
         "type": "firewall"
-      }
+      },
+	  {
+		"type": "tc-redirect-tap"
+	  }
     ]
 }
-`, defaultNetworkName, defaultBridgeName, defaultSubnet, CNIDataDir)
+`, defaultNetworkName, defaultSubnet, CNIDataDir)
 
 // InitNetwork writes configlist file and initializes CNI network
 func InitNetwork() (gocni.CNI, error) {
@@ -148,10 +145,10 @@ func DeleteCNINetwork(ctx context.Context, cni gocni.CNI, client *containerd.Cli
 }
 
 // GetIPAddress returns the IP address from container based on container name and PID
-func GetIPAddress(container string, PID uint32) (string, error) {
+func GetIPAddress(container string) (string, error) {
 	CNIDir := path.Join(CNIDataDir, defaultNetworkName)
 
-	files, err := ioutil.ReadDir(CNIDir)
+	files, err := os.ReadDir(CNIDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to read CNI dir for container %s: %v", container, err)
 	}
@@ -161,7 +158,7 @@ func GetIPAddress(container string, PID uint32) (string, error) {
 		fileName := file.Name()
 
 		resultsFile := filepath.Join(CNIDir, fileName)
-		found, err := isCNIResultForPID(resultsFile, container, PID)
+		found, err := isCNIResultForContainer(resultsFile, container)
 		if err != nil {
 			return "", err
 		}
@@ -174,7 +171,7 @@ func GetIPAddress(container string, PID uint32) (string, error) {
 	return "", fmt.Errorf("unable to get IP address for container: %s", container)
 }
 
-// isCNIResultForPID confirms if the CNI result file contains the
+// isCNIResultForContainer confirms if the CNI result file contains the
 // process name, PID and interface name
 //
 // Example:
@@ -183,7 +180,7 @@ func GetIPAddress(container string, PID uint32) (string, error) {
 //
 // nats-621
 // eth1
-func isCNIResultForPID(fileName, container string, PID uint32) (bool, error) {
+func isCNIResultForContainer(fileName, container string) (bool, error) {
 	found := false
 
 	f, err := os.Open(fileName)
@@ -194,7 +191,7 @@ func isCNIResultForPID(fileName, container string, PID uint32) (bool, error) {
 
 	reader := bufio.NewReader(f)
 	processLine, _ := reader.ReadString('\n')
-	if strings.Contains(processLine, fmt.Sprintf("%s-%d", container, PID)) {
+	if strings.Contains(processLine, container) {
 		ethNameLine, _ := reader.ReadString('\n')
 		if strings.Contains(ethNameLine, defaultIfPrefix) {
 			found = true

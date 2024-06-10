@@ -129,7 +129,7 @@ func GetFunction(client *containerd.Client, name string, namespace string) (Func
 			fn.pid = task.Pid()
 
 			// Get container IP address
-			ip, err := cninetwork.GetIPAddress(name, task.Pid())
+			ip, err := cninetwork.GetIPAddress(name)
 			if err != nil {
 				return Function{}, err
 			}

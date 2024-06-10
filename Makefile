@@ -14,7 +14,7 @@ all: test dist hashgen
 publish: dist hashgen
 
 local:
-	CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o bin/faasd
+	CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o bin/faasd-fc
 
 .PHONY: test
 test:
@@ -22,17 +22,17 @@ test:
 
 .PHONY: dist-local
 dist-local:
-	CGO_ENABLED=0 GOOS=linux go build -mod=vendor -ldflags $(LDFLAGS) -o bin/faasd
+	CGO_ENABLED=0 GOOS=linux go build -mod=vendor -ldflags $(LDFLAGS) -o bin/faasd-fc
 
 .PHONY: dist
 dist:
-	CGO_ENABLED=0 GOOS=linux go build -mod=vendor -ldflags $(LDFLAGS) -o bin/faasd
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 go build -mod=vendor -ldflags $(LDFLAGS) -o bin/faasd-armhf
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -mod=vendor -ldflags $(LDFLAGS) -o bin/faasd-arm64
+	CGO_ENABLED=0 GOOS=linux go build -mod=vendor -ldflags $(LDFLAGS) -o bin/faasd-fc
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 go build -mod=vendor -ldflags $(LDFLAGS) -o bin/faasd-fc-armhf
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -mod=vendor -ldflags $(LDFLAGS) -o bin/faasd-fc-arm64
 
 .PHONY: hashgen
 hashgen:
-	for f in bin/faasd*; do shasum -a 256 $$f > $$f.sha256; done
+	for f in bin/faasd-fc*; do shasum -a 256 $$f > $$f.sha256; done
 
 .PHONY: prepare-test
 prepare-test:
@@ -42,8 +42,8 @@ prepare-test:
 	sudo /sbin/sysctl -w net.ipv4.conf.all.forwarding=1
 	sudo mkdir -p /opt/cni/bin
 	curl -sSL https://github.com/containernetworking/plugins/releases/download/$(CNI_VERSION)/cni-plugins-linux-$(ARCH)-$(CNI_VERSION).tgz | sudo tar -xz -C /opt/cni/bin
-	sudo cp bin/faasd /usr/local/bin/
-	sudo /usr/local/bin/faasd install
+	sudo cp bin/faasd-fc /usr/local/bin/
+	sudo /usr/local/bin/faasd-fc install
 	sudo systemctl status -l containerd --no-pager
 	sudo journalctl -u faasd-provider --no-pager
 	sudo systemctl status -l faasd-provider --no-pager

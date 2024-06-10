@@ -1,0 +1,13 @@
+[Unit]
+Description=faasd
+After=faasd-provider.service
+
+[Service]
+MemoryLimit=500M
+ExecStart=/usr/local/bin/faasd-fc up
+Restart=on-failure
+RestartSec=10s
+WorkingDirectory={{.Cwd}}
+
+[Install]
+WantedBy=multi-user.target

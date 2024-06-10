@@ -1,0 +1,15 @@
+[Unit]
+Description=faasd-provider
+
+[Service]
+MemoryLimit=500M
+Environment="secret_mount_path={{.SecretMountPath}}"
+Environment="basic_auth=true"
+Environment="hosts_dir=/var/lib/faasd"
+ExecStart=/usr/local/bin/faasd-fc provider
+Restart=on-failure
+RestartSec=10s
+WorkingDirectory={{.Cwd}}
+
+[Install]
+WantedBy=multi-user.target

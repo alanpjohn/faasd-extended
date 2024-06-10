@@ -18,6 +18,7 @@ import (
 	"github.com/containerd/containerd/oci"
 	gocni "github.com/containerd/go-cni"
 	"github.com/docker/distribution/reference"
+	"github.com/firecracker-microvm/firecracker-containerd/runtime/firecrackeroci"
 	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/openfaas/faas-provider/types"
 	cninetwork "github.com/openfaas/faasd/pkg/cninetwork"
@@ -97,7 +98,7 @@ func prepull(ctx context.Context, req types.FunctionDeployment, client *containe
 
 	imgRef := reference.TagNameOnly(r).String()
 
-	snapshotter := ""
+	snapshotter := "devmapper"
 	if val, ok := os.LookupEnv("snapshotter"); ok {
 		snapshotter = val
 	}
@@ -115,7 +116,7 @@ func prepull(ctx context.Context, req types.FunctionDeployment, client *containe
 
 func deploy(ctx context.Context, req types.FunctionDeployment, client *containerd.Client, cni gocni.CNI, secretMountPath string, alwaysPull bool) error {
 
-	snapshotter := ""
+	snapshotter := "devmapper"
 	if val, ok := os.LookupEnv("snapshotter"); ok {
 		snapshotter = val
 	}
@@ -156,19 +157,32 @@ func deploy(ctx context.Context, req types.FunctionDeployment, client *container
 		memory.Limit = &v
 	}
 
-	container, err := client.NewContainer(
-		ctx,
-		name,
+	copts := []containerd.NewContainerOpts{
 		containerd.WithImage(image),
 		containerd.WithSnapshotter(snapshotter),
 		containerd.WithNewSnapshot(name+"-snapshot", image),
-		containerd.WithNewSpec(oci.WithImageConfig(image),
-			oci.WithHostname(name),
+		containerd.WithNewSpec(
+			oci.WithImageConfig(image),
 			oci.WithCapabilities([]string{"CAP_NET_RAW"}),
-			oci.WithMounts(mounts),
+			// oci.WithMounts(mounts),
 			oci.WithEnv(envs),
+			firecrackeroci.WithVMID(name),
+			firecrackeroci.WithVMNetwork,
 			withMemory(memory)),
 		containerd.WithContainerLabels(labels),
+	}
+
+	if runtime, exists := labels["com.openfaas.profile"]; exists {
+		copts = append(copts,
+			containerd.WithRuntime(runtime, nil),
+		)
+		log.Printf("[Deploy] found runtime %s", runtime)
+	}
+
+	container, err := client.NewContainer(
+		ctx,
+		name,
+		copts...,
 	)
 
 	if err != nil {
@@ -203,31 +217,17 @@ func buildLabels(request *types.FunctionDeployment) (map[string]string, error) {
 	return labels, nil
 }
 
-func createTask(ctx context.Context, container containerd.Container, cni gocni.CNI) error {
+func createTask(ctx context.Context, container containerd.Container, _ gocni.CNI) error {
 
 	name := container.ID()
 
-	task, taskErr := container.NewTask(ctx, cio.BinaryIO("/usr/local/bin/faasd", nil))
+	task, taskErr := container.NewTask(ctx, cio.LogFile(fmt.Sprintf("/tmp/%s.log", name)))
 
 	if taskErr != nil {
 		return fmt.Errorf("unable to start task: %s, error: %w", name, taskErr)
 	}
 
 	log.Printf("Container ID: %s\tTask ID %s:\tTask PID: %d\t\n", name, task.ID(), task.Pid())
-
-	labels := map[string]string{}
-	_, err := cninetwork.CreateCNINetwork(ctx, cni, task, labels)
-
-	if err != nil {
-		return err
-	}
-
-	ip, err := cninetwork.GetIPAddress(name, task.Pid())
-	if err != nil {
-		return err
-	}
-
-	log.Printf("%s has IP: %s.\n", name, ip)
 
 	_, waitErr := task.Wait(ctx)
 	if waitErr != nil {
@@ -237,6 +237,13 @@ func createTask(ctx context.Context, container containerd.Container, cni gocni.C
 	if startErr := task.Start(ctx); startErr != nil {
 		return errors.Wrapf(startErr, "Unable to start task: %s", name)
 	}
+
+	ip, err := cninetwork.GetIPAddress(name)
+	if err != nil {
+		return err
+	}
+	log.Printf("%s has IP: %s.\n", name, ip)
+
 	return nil
 }
 

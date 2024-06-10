@@ -56,7 +56,11 @@ func Remove(ctx context.Context, client *containerd.Client, name string) error {
 		}
 
 	} else {
-		service := client.SnapshotService("")
+		snapshotter := "devmapper"
+		if val, ok := os.LookupEnv("snapshotter"); ok {
+			snapshotter = val
+		}
+		service := client.SnapshotService(snapshotter)
 		key := name + "-snapshot"
 		if _, err := client.SnapshotService("").Stat(ctx, key); err == nil {
 			service.Remove(ctx, key)
@@ -104,7 +108,7 @@ func killTask(ctx context.Context, task containerd.Task) error {
 	return err
 }
 
-func getResolver(ctx context.Context, configFile *configfile.ConfigFile) (remotes.Resolver, error) {
+func getResolver(_ context.Context, configFile *configfile.ConfigFile) (remotes.Resolver, error) {
 	// credsFunc is based on https://github.com/moby/buildkit/blob/0b130cca040246d2ddf55117eeff34f546417e40/session/auth/authprovider/authprovider.go#L35
 	credFunc := func(host string) (string, string, error) {
 		if host == "registry-1.docker.io" {

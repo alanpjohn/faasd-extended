@@ -247,7 +247,7 @@ func (s *Supervisor) Start(svcs []Service) error {
 			return err
 		}
 
-		ip, err := cninetwork.GetIPAddress(svc.Name, task.Pid())
+		ip, err := cninetwork.GetIPAddress(svc.Name)
 		if err != nil {
 			log.Printf("Error getting IP for %s: %s", svc.Name, err)
 			return err

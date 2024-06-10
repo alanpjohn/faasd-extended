@@ -24,7 +24,7 @@ func (e EnvBucket) Setenv(key string, value string) {
 }
 
 func Test_SetSockByEnv(t *testing.T) {
-	defaultSock := "/run/containerd/containerd.sock"
+	defaultSock := "/run/firecracker-containerd/containerd.sock"
 	expectedSock := "/non/default/value.sock"
 	env := NewEnvBucket()
 	_, config, err := ReadFromEnv(env)

@@ -55,7 +55,7 @@ func runInstall(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	err = systemd.InstallUnit("faasd-provider", map[string]string{
+	err = systemd.InstallUnit("faasd-fc-provider", map[string]string{
 		"Cwd":             faasdProviderWd,
 		"SecretMountPath": path.Join(faasdwd, "secrets")})
 
@@ -63,7 +63,7 @@ func runInstall(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	err = systemd.InstallUnit("faasd", map[string]string{"Cwd": faasdwd})
+	err = systemd.InstallUnit("faasd-fc", map[string]string{"Cwd": faasdwd})
 	if err != nil {
 		return err
 	}
@@ -73,28 +73,28 @@ func runInstall(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	err = systemd.Enable("faasd-provider")
+	err = systemd.Enable("faasd-fc-provider")
 	if err != nil {
 		return err
 	}
 
-	err = systemd.Enable("faasd")
+	err = systemd.Enable("faasd-fc")
 	if err != nil {
 		return err
 	}
 
-	err = systemd.Start("faasd-provider")
+	err = systemd.Start("faasd-fc-provider")
 	if err != nil {
 		return err
 	}
 
-	err = systemd.Start("faasd")
+	err = systemd.Start("faasd-fc")
 	if err != nil {
 		return err
 	}
 
 	fmt.Println(`Check status with:
-  sudo journalctl -u faasd --lines 100 -f
+  sudo journalctl -u faasd-fc --lines 100 -f
 
 Login with:
   sudo -E cat /var/lib/faasd/secrets/basic-auth-password | faas-cli login -s`)

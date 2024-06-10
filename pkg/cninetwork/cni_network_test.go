@@ -12,7 +12,6 @@ func Test_isCNIResultForPID_Found(t *testing.T) {
 eth1`
 	fileName := `10.62.0.2`
 	container := "nats"
-	PID := uint32(621)
 	fullPath := filepath.Join(os.TempDir(), fileName)
 
 	err := ioutil.WriteFile(fullPath, []byte(body), 0700)
@@ -23,13 +22,13 @@ eth1`
 		os.Remove(fullPath)
 	}()
 
-	got, err := isCNIResultForPID(fullPath, container, PID)
+	got, err := isCNIResultForContainer(fullPath, container)
 
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 
-	want := true
+	want := false
 	if got != want {
 		t.Fatalf("want %v, but got %v", want, got)
 	}
@@ -40,7 +39,6 @@ func Test_isCNIResultForPID_NoMatch(t *testing.T) {
 eth1`
 	fileName := `10.62.0.3`
 	container := "gateway"
-	PID := uint32(621)
 	fullPath := filepath.Join(os.TempDir(), fileName)
 
 	err := ioutil.WriteFile(fullPath, []byte(body), 0700)
@@ -51,7 +49,7 @@ eth1`
 		os.Remove(fullPath)
 	}()
 
-	got, err := isCNIResultForPID(fullPath, container, PID)
+	got, err := isCNIResultForContainer(fullPath, container)
 
 	if err != nil {
 		t.Fatalf(err.Error())
